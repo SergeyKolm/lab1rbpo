@@ -1,18 +1,44 @@
 package org.example.model;
 
+import jakarta.persistence.*;
 import lombok.Data;
 
 @Data
+@Entity
+@Table(name = "standings")
 public class Standing {
-    private Long id;
-    private Long teamId;
-    private Integer played;
-    private Integer wins;
-    private Integer draws;
-    private Integer losses;
-    private Integer goalsFor;
-    private Integer goalsAgainst;
-    private Integer points;
 
-    public Team getTeam() { return null; } // временно
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "team_id", nullable = false, unique = true)
+    private Long teamId;
+
+    @Column(nullable = false)
+    private Integer position;
+
+    @Column(nullable = false)
+    private Integer matchesPlayed = 0;
+
+    @Column(nullable = false)
+    private Integer wins = 0;
+
+    @Column(nullable = false)
+    private Integer draws = 0;
+
+    @Column(nullable = false)
+    private Integer losses = 0;
+
+    @Column(name = "goals_for", nullable = false)
+    private Integer goalsFor = 0;
+
+    @Column(name = "goals_against", nullable = false)
+    private Integer goalsAgainst = 0;
+
+    @Column(name = "goal_difference")
+    private Integer goalDifference = 0;
+
+    @Column(nullable = false)
+    private Integer points = 0;
 }

@@ -1,39 +1,55 @@
 package org.example.repository;
 
 import org.example.model.Standing;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.List;
+import java.util.Optional;
 
 @Repository
-public class StandingRepository {
-    private final Map<Long, Standing> standings = new HashMap<>();
-    private final AtomicLong counter = new AtomicLong(1);
+public interface StandingRepository extends JpaRepository<Standing, Long> {
 
-    public List<Standing> findAll() {
-        return new ArrayList<>(standings.values());
-    }
+    Optional<Standing> findByTeamId(Long teamId);
 
-    public Optional<Standing> findById(Long id) {
-        return Optional.ofNullable(standings.get(id));
-    }
+    // Получить всю таблицу отсортированную
+    List<Standing> findAllByOrderByPointsDescGoalDifferenceDescGoalsForDesc();
 
-    public Optional<Standing> findByTeamId(Long teamId) {
-        return standings.values().stream()
-                .filter(standing -> standing.getTeamId().equals(teamId))
-                .findFirst();
-    }
+    // Топ N команд
+    List<Standing> findTop5ByOrderByPointsDescGoalDifferenceDescGoalsForDesc();
 
-    public Standing save(Standing standing) {
-        if (standing.getId() == null) {
-            standing.setId(counter.getAndIncrement());
-        }
-        standings.put(standing.getId(), standing);
-        return standing;
-    }
+    // Команды с положительной разницей голов
+    List<Standing> findByGoalDifferenceGreaterThan(Integer difference);
 
-    public void deleteById(Long id) {
-        standings.remove(id);
-    }
+    // Команды без побед
+    List<Standing> findByWins(Integer wins);
+
+    // Команды с определенным количеством очков или больше
+    List<Standing> findByPointsGreaterThanEqual(Integer points);
+
+    // Обновление позиций
+    @Query(value = "UPDATE standings SET position = :position WHERE id = :id", nativeQuery = true)
+    void updatePosition(@Param("id") Long id, @Param("position") Integer position);
+
+    // Позиция команды в таблице (1-based)
+    @Query(value = """
+        SELECT COUNT(*) + 1 FROM standings s 
+        WHERE s.points > (SELECT points FROM standings WHERE team_id = :teamId) 
+        OR (s.points = (SELECT points FROM standings WHERE team_id = :teamId) 
+        AND s.goal_difference > (SELECT goal_difference FROM standings WHERE team_id = :teamId))
+        OR (s.points = (SELECT points FROM standings WHERE team_id = :teamId) 
+        AND s.goal_difference = (SELECT goal_difference FROM standings WHERE team_id = :teamId)
+        AND s.goals_for > (SELECT goals_for FROM standings WHERE team_id = :teamId))
+        """, nativeQuery = true)
+    Integer getPositionByTeamId(@Param("teamId") Long teamId);
+
+    // Общее количество забитых голов в чемпионате
+    @Query("SELECT SUM(s.goalsFor) FROM Standing s")
+    Integer getTotalGoalsInLeague();
+
+    // Среднее количество очков
+    @Query("SELECT AVG(s.points) FROM Standing s")
+    Double getAveragePoints();
 }

@@ -1,46 +1,54 @@
 package org.example.repository;
 
 import org.example.model.Match;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.List;
 
 @Repository
-public class MatchRepository {
-    private final Map<Long, Match> matches = new HashMap<>();
-    private final AtomicLong counter = new AtomicLong(1);
+public interface MatchRepository extends JpaRepository<Match, Long> {
 
-    public List<Match> findAll() {
-        return new ArrayList<>(matches.values());
-    }
+    // Поиск матчей по статусу
+    List<Match> findByStatus(String status);
 
-    public Optional<Match> findById(Long id) {
-        return Optional.ofNullable(matches.get(id));
-    }
+    // Поиск матчей по статусу (НЕ равному указанному)
+    List<Match> findByStatusNot(String status);
 
-    public Match save(Match match) {
-        if (match.getId() == null) {
-            match.setId(counter.getAndIncrement());
-        }
-        matches.put(match.getId(), match);
-        return match;
-    }
+    // Поиск матчей команды (домашние или гостевые)
+    List<Match> findByHomeTeamIdOrAwayTeamId(Long homeTeamId, Long awayTeamId);
 
-    public void deleteById(Long id) {
-        matches.remove(id);
-    }
+    // Поиск матчей по дате
+    List<Match> findByMatchDateBetween(LocalDateTime startDate, LocalDateTime endDate);
 
-    // Проверка конфликта матчей для команды
-    public List<Match> findConflictingMatches(Long teamId, LocalDateTime startTime, LocalDateTime endTime) {
-        List<Match> conflicts = new ArrayList<>();
-        for (Match match : matches.values()) {
-            if ((match.getHomeTeamId().equals(teamId) || match.getAwayTeamId().equals(teamId)) &&
-                    match.getMatchDate().isAfter(startTime) && match.getMatchDate().isBefore(endTime)) {
-                conflicts.add(match);
-            }
-        }
-        return conflicts;
-    }
+    // Матчи после указанной даты (предстоящие)
+    List<Match> findByMatchDateAfter(LocalDateTime date);
+
+    // Матчи до указанной даты (прошедшие)
+    List<Match> findByMatchDateBefore(LocalDateTime date);
+
+    // Матчи на конкретной арене
+    List<Match> findByVenueId(Long venueId);
+
+    // Проверка конфликта расписания
+    @Query("SELECT m FROM Match m WHERE " +
+            "(m.homeTeamId = :teamId OR m.awayTeamId = :teamId) AND " +
+            "m.matchDate BETWEEN :startTime AND :endTime AND " +
+            "m.status != 'FINISHED'")
+    List<Match> findConflictingMatches(
+            @Param("teamId") Long teamId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime);
+
+    // Поиск матчей с определенным счетом
+    @Query("SELECT m FROM Match m WHERE m.status = 'FINISHED' AND " +
+            "(m.homeTeamScore > m.awayTeamScore OR m.awayTeamScore > m.homeTeamScore)")
+    List<Match> findMatchesWithWinner();
+
+    // Количество матчей команды
+    @Query("SELECT COUNT(m) FROM Match m WHERE (m.homeTeamId = :teamId OR m.awayTeamId = :teamId) AND m.status = 'FINISHED'")
+    Long countMatchesByTeamId(@Param("teamId") Long teamId);
 }

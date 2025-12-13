@@ -1,33 +1,40 @@
 package org.example.repository;
 
 import org.example.model.Team;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.*;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.List;
+import java.util.Optional;
 
 @Repository
-public class TeamRepository {
-    private final Map<Long, Team> teams = new HashMap<>();
-    private final AtomicLong counter = new AtomicLong(1);
+public interface TeamRepository extends JpaRepository<Team, Long> {
 
-    public List<Team> findAll() {
-        return new ArrayList<>(teams.values());
-    }
+    Optional<Team> findByName(String name);
 
-    public Optional<Team> findById(Long id) {
-        return Optional.ofNullable(teams.get(id));
-    }
+    boolean existsByName(String name);
 
-    public Team save(Team team) {
-        if (team.getId() == null) {
-            team.setId(counter.getAndIncrement());
-        }
-        teams.put(team.getId(), team);
-        return team;
-    }
+    // Поиск по городу
+    List<Team> findByCity(String city);
 
-    public void deleteById(Long id) {
-        teams.remove(id);
-    }
+    // Команды с определенным количеством очков или больше
+    List<Team> findByPointsGreaterThanEqual(Integer points);
+
+    // Топ команд по очкам
+    List<Team> findAllByOrderByPointsDesc();
+
+    // Поиск по году основания
+    List<Team> findByFoundationYear(Integer year);
+
+    // Поиск по диапазону годов
+    List<Team> findByFoundationYearBetween(Integer startYear, Integer endYear);
+
+    // Команды с определенным тренером
+    List<Team> findByCoachName(String coachName);
+
+    // Количество команд в городе
+    @Query("SELECT COUNT(t) FROM Team t WHERE t.city = :city")
+    Long countByCity(@Param("city") String city);
 }
